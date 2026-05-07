@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Процессы и потоки в Node.js</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/reveal.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/theme/black.min.css">
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/plugin/highlight/monokai.min.css">
+    <style>
+        .reveal h1,
+        .reveal h2,
+        .reveal h3 {
+            text-transform: none;
+        }
+
+        .reveal pre code {
+            font-size: 0.65em;
+            line-height: 1.3;
+        }
+
+        .reveal table {
+            font-size: 0.55em;
+        }
+
+        .reveal table th,
+        .reveal table td {
+            padding: 0.2em 0.4em;
+            border: 1px solid #555;
+        }
+
+        .reveal .highlight {
+            color: #42affa;
+        }
+
+        .reveal .two-columns {
+            display: flex;
+            gap: 2em;
+        }
+
+        .reveal .two-columns>* {
+            flex: 1;
+        }
+
+        .small-code pre code {
+            font-size: 0.5em;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="reveal">
+        <div class="slides">
+            <!-- Титульный слайд -->
+            <section>
+                <h1>Процессы и потоки в Node.js</h1>
+                <p>Понимание архитектуры выполнения в JavaScript</p>
+                <p style="font-size: 0.7em; margin-top: 2em;">Материал для технической аудитории (middle+/senior)</p>
+            </section>
+
+            <!-- Слайд 1: Введение -->
+            <section>
+                <h2>Введение</h2>
+                <p>Понимание концепции процессов и потоков - ключ к эффективной разработке в Node.js</p>
+                <ul>
+                    <li>Что такое процесс?</li>
+                    <li>Что такое поток?</li>
+                    <li>Почему важно различать эти понятия?</li>
+                </ul>
+            </section>
+
+            <!-- Слайд 2: Процессы vs Потоки -->
+            <section>
+                <h2>Процессы vs Потоки</h2>
+                <div class="two-columns">
+                    <div>
+                        <h3>Процесс</h3>
+                        <ul>
+                            <li>Независимая единица выполнения</li>
+                            <li>Имеет собственную память</li>
+                            <li>Изоляция ресурсов</li>
+                            <li>Высокая стоимость создания</li>
+                            <li>Межпроцессное взаимодействие</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3>Поток</h3>
+                        <ul>
+                            <li>Внутрипроцессовая единица выполнения</li>
+                            <li>Делится памятью с другими потоками</li>
+                            <li>Низкая стоимость создания</li>
+                            <li>Общий доступ к ресурсам</li>
+                            <li>Межпотоковое взаимодействие</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Слайд 3: JavaScript однопоточный -->
+            <section>
+                <h2>JavaScript - однопоточный</h2>
+                <p>Основные принципы однопоточности:</p>
+                <ul>
+                    <li>Один поток выполнения</li>
+                    <li>Событийно-ориентированная модель</li>
+                    <li>Асинхронное выполнение</li>
+                    <li>Одновременно только один фрагмент кода</li>
+                </ul>
+                <pre><code class="javascript">// Пример однопоточного выполнения
+console.log("1");
+setTimeout(() => console.log("2"), 0);
+console.log("3");
+// Вывод: 1, 3, 2</code></pre>
+            </section>
+
+            <!-- Слайд 4: Почему Node.js однопоточный -->
+            <section>
+                <h2>Почему Node.js однопоточный</h2>
+                <ul>
+                    <li>Облегченная модель выполнения</li>
+                    <li>Избежание гонок данных</li>
+                    <li>Простота отладки</li>
+                    <li>Эффективное управление ресурсами</li>
+                    <li>Одна точка входа в событийный цикл</li>
+                </ul>
+                <p style="font-size: 0.7em; margin-top: 1em;">В отличие от многопоточных языков, Node.js использует event loop для обработки асинхронных операций</p>
+            </section>
+
+            <!-- Слайд 5: Структура Node.js -->
+            <section>
+                <h2>Структура Node.js</h2>
+                <div class="two-columns">
+                    <div>
+                        <h3>Основные компоненты</h3>
+                        <ul>
+                            <li>Event Loop</li>
+                            <li>Libuv (асинхронная библиотека)</li>
+                            <li>JavaScript Engine (V8)</li>
+                            <li>Системные вызовы</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3>Архитектура</h3>
+                        <pre><code class="plaintext">┌─────────────────┐
+│   Application   │
+├─────────────────┤
+│   JavaScript    │
+├─────────────────┤
+│   V8 Engine     │
+├─────────────────┤
+│   Node.js API   │
+├─────────────────┤
+│   Libuv         │
+├─────────────────┤
+│   OS/Kernel     │
+└─────────────────┘</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Слайд 6: Многопоточность в Node.js -->
+            <section>
+                <h2>Многопоточность в Node.js</h2>
+                <p>Node.js использует многопоточность на уровне системы:</p>
+                <ul>
+                    <li>Потоки ввода-вывода (IO threads)</li>
+                    <li>Потоки для парсинга CSS</li>
+                    <li>Потоки для работы с файлами</li>
+                    <li>Потоки для сетевых операций</li>
+                    <li>Потоки для выполнения CPU-intensive задач</li>
+                </ul>
+            </section>
+
+            <!-- Слайд 7: Libuv и потоки -->
+            <section>
+                <h2>Libuv и потоки</h2>
+                <p>Libuv - библиотека для асинхронных операций:</p>
+                <ul>
+                    <li>Конфигурируемое количество потоков</li>
+                    <li>По умолчанию 4 потока для асинхронных операций</li>
+                    <li>Можно изменить через UV_THREADPOOL_SIZE</li>
+                </ul>
+                <pre><code class="bash">export UV_THREADPOOL_SIZE=8
+node app.js</code></pre>
+                <p style="font-size: 0.7em; margin-top: 1em;">Потоки Libuv используются для задач, которые могут блокировать основной поток</p>
+            </section>
+
+            <!-- Слайд 8: Примеры использования потоков -->
+            <section>
+                <h2>Примеры использования потоков</h2>
+                <div class="two-columns">
+                    <div>
+                        <h3>Системные вызовы</h3>
+                        <ul>
+                            <li>Файловая система</li>
+                            <li>Сетевые операции</li>
+                            <li>Шифрование</li>
+                            <li>Работа с базами данных</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3>Пользовательские потоки</h3>
+                        <pre><code class="javascript">const { Worker, isMainThread, parentPort } = require('worker_threads');
+
+if (isMainThread) {
+  const worker = new Worker(__filename);
+  worker.on('message', (msg) => {
+    console.log('Received:', msg);
+  });
+} else {
+  parentPort.postMessage('Hello from worker');
+}</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Слайд 9: Браузер vs Node.js -->
+            <section>
+                <h2>Браузер vs Node.js</h2>
+                <div class="two-columns">
+                    <div>
+                        <h3>Браузер</h3>
+                        <ul>
+                            <li>Один поток для UI</li>
+                            <li>Web Workers для параллелизма</li>
+                            <li>Ограниченный доступ к ресурсам</li>
+                            <li>Ограничения безопасности</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3>Node.js</h3>
+                        <ul>
+                            <li>Один поток для JavaScript</li>
+                            <li>Worker Threads для CPU-интенсивных задач</li>
+                            <li>Полный доступ к системным ресурсам</li>
+                            <li>Многопоточность через Libuv</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Слайд 10: Практические примеры -->
+            <section>
+                <h2>Практические примеры</h2>
+                <h3>Использование Worker Threads</h3>
+                <pre><code class="javascript">// worker.js
+const { parentPort } = require('worker_threads');
+
+parentPort.on('message', (data) => {
+  // CPU-intensive задача
+  const result = heavyCalculation(data);
+  parentPort.postMessage(result);
+});
+
+function heavyCalculation(input) {
+  let sum = 0;
+  for (let i = 0; i < input; i++) {
+    sum += i * i;
+  }
+  return sum;
+}</code></pre>
+            </section>
+
+            <!-- Слайд 11: Еще один пример -->
+            <section>
+                <h2>Пример Worker Threads</h2>
+                <pre><code class="javascript">// main.js
+const { Worker } = require('worker_threads');
+const worker = new Worker('./worker.js');
+
+worker.postMessage(1000000);
+worker.on('message', (result) => {
+  console.log('Результат:', result);
+});
+
+worker.on('error', (error) => {
+  console.error('Ошибка:', error);
+});
+
+worker.on('exit', (code) => {
+  if (code !== 0) {
+    console.error('Worker завершился с кодом', code);
+  }
+});</code></pre>
+            </section>
+
+            <!-- Слайд 12: Рекомендации -->
+            <section>
+                <h2>Рекомендации по использованию</h2>
+                <ul>
+                    <li>Используйте Event Loop для I/O операций</li>
+                    <li>Используйте Worker Threads для CPU-интенсивных задач</li>
+                    <li>Настройте UV_THREADPOOL_SIZE для ваших задач</li>
+                    <li>Не перегружайте систему потоками</li>
+                    <li>Учитывайте overhead при создании потоков</li>
+                </ul>
+            </section>
+
+            <!-- Слайд 13: Сценарии использования -->
+            <section>
+                <h2>Сценарии использования</h2>
+                <div class="two-columns">
+                    <div>
+                        <h3>Используйте Event Loop когда:</h3>
+                        <ul>
+                            <li>Файловые операции</li>
+                            <li>Сетевые вызовы</li>
+                            <li>Базы данных</li>
+                            <li>Таймеры и задержки</li>
+                            <li>События пользовательского интерфейса</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3>Используйте Worker Threads когда:</h3>
+                        <ul>
+                            <li>Математические вычисления</li>
+                            <li>Обработка больших объемов данных</li>
+                            <li>Шифрование/дешифрование</li>
+                            <li>Работа с изображениями</li>
+                            <li>Анализ логов</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Слайд 14: Libuv - ядро асинхронности -->
+            <section>
+                <h2>Libuv - ядро асинхронности Node.js</h2>
+                <p>Libuv - это кроссплатформенная библиотека для асинхронного ввода-вывода:</p>
+                <ul>
+                    <li>Написана на C</li>
+                    <li>Обеспечивает event loop</li>
+                    <li>Управляет потоками (thread pool)</li>
+                    <li>Работает с системными вызовами</li>
+                    <li>Поддерживает разные операционные системы</li>
+                </ul>
+                <pre><code class="plaintext">┌─────────────────┐
+│   Node.js       │
+│   V8 Engine     │
+│   Libuv         │
+├─────────────────┤
+│   OS/Kernel     │
+└─────────────────┘</code></pre>
+                <p style="font-size: 0.7em; margin-top: 1em;">Libuv обеспечивает асинхронность на уровне операционной системы</p>
+            </section>
+
+            <!-- Слайд 15: Архитектура Libuv -->
+            <section>
+                <h2>Архитектура Libuv</h2>
+                <div class="two-columns">
+                    <div>
+                        <h3>Основные компоненты</h3>
+                        <ul>
+                            <li>Event Loop</li>
+                            <li>Thread Pool</li>
+                            <li>I/O Overlays</li>
+                            <li>Async Handle</li>
+                            <li>Timer Handle</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3>Thread Pool</h3>
+                        <ul>
+                            <li>По умолчанию 4 потока</li>
+                            <li>Настройка через UV_THREADPOOL_SIZE</li>
+                            <li>Используется для блокирующих операций</li>
+                            <li>Управление очередью задач</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Слайд 16: Производительность -->
+            <section>
+                <h2>Производительность и overhead</h2>
+                <ul>
+                    <li>Event Loop: низкий overhead, высокая эффективность для I/O</li>
+                    <li>Worker Threads: overhead при создании потока</li>
+                    <li>Оптимальное количество потоков: обычно 2-4 на CPU</li>
+                    <li>Используйте кэширование и пул потоков</li>
+                </ul>
+                <pre><code class="javascript">// Пример сравнения производительности
+const { Worker } = require('worker_threads');
+
+// Для CPU-интенсивных задач
+const worker = new Worker('./cpu-intensive.js');
+worker.postMessage(data);
+
+// Для I/O задач
+const fs = require('fs');
+fs.readFile('file.txt', 'utf8', (err, data) => {
+  // Обработка данных
+});</code></pre>
+            </section>
+
+            <!-- Слайд 17: Проблемы и решения -->
+            <section>
+                <h2>Проблемы и лучшие практики</h2>
+                <h3>Частые проблемы:</h3>
+                <ul>
+                    <li>Блокировка основного потока</li>
+                    <li>Неправильное управление памятью</li>
+                    <li>Проблемы с передачей данных между потоками</li>
+                    <li>Слишком много потоков</li>
+                </ul>
+                <h3>Решения:</h3>
+                <ul>
+                    <li>Используйте Worker Pool</li>
+                    <li>Ограничивайте количество одновременных потоков</li>
+                    <li>Используйте память с умом</li>
+                    <li>Мониторьте использование ресурсов</li>
+                </ul>
+            </section>
+
+            <!-- Слайд 18: Мониторинг -->
+            <section>
+                <h2>Мониторинг и отладка</h2>
+                <ul>
+                    <li>Используйте Node.js Inspector для профилирования</li>
+                    <li>Мониторьте использование CPU и памяти</li>
+                    <li>Отслеживайте блокировки потоков</li>
+                    <li>Используйте метрики производительности</li>
+                </ul>
+                <pre><code class="bash"># Запуск с профайлером
+node --inspect-brk app.js
+
+# Проверка производительности
+node --max-old-space-size=4096 app.js</code></pre>
+            </section>
+
+            <!-- Слайд 19: Сравнение с другими языками -->
+            <section>
+                <h2>Сравнение с другими runtime</h2>
+                <table>
+                    <tr>
+                        <th>Язык/Платформа</th>
+                        <th>Модель</th>
+                        <th>Потоки</th>
+                        <th>Особенности</th>
+                    </tr>
+                    <tr>
+                        <td>Node.js</td>
+                        <td>Однопоточный с Event Loop</td>
+                        <td>Libuv (системные)</td>
+                        <td>Worker Threads для CPU</td>
+                    </tr>
+                    <tr>
+                        <td>Python</td>
+                        <td>Многопоточный с GIL</td>
+                        <td>CPython: ограничения</td>
+                        <td>Использует multiprocessing</td>
+                    </tr>
+                    <tr>
+                        <td>Java</td>
+                        <td>Многопоточный</td>
+                        <td>Встроенные потоки</td>
+                        <td>Полноценная модель потоков</td>
+                    </tr>
+                </table>
+            </section>
+
+            <!-- Слайд 20: Заключение -->
+            <section>
+                <h2>Заключение</h2>
+                <ul>
+                    <li>JavaScript - однопоточный язык</li>
+                    <li>Node.js использует Event Loop для асинхронности</li>
+                    <li>Libuv обеспечивает асинхронность на уровне системы</li>
+                    <li>Worker Threads для CPU-интенсивных задач</li>
+                    <li>Различие между браузером и Node.js в подходах к многопоточности</li>
+                    <li>Правильное использование ресурсов - ключ к эффективности</li>
+                </ul>
+                <p style="font-size: 0.8em; margin-top: 2em;">Понимание этих концепций помогает создавать более эффективные приложения</p>
+            </section>
+
+            <!-- Слайд 21: Вопросы -->
+            <section>
+                <h2>Вопросы?</h2>
+                <p>Спасибо за внимание!</p>
+                <p style="font-size: 0.8em; margin-top: 2em;">Техническая аудитория (middle+/senior)</p>
+            </section>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/reveal.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/plugin/highlight/highlight.min.js"></script>
+    <script>
+        Reveal.initialize({
+            hash: true,
+            slideNumber: true,
+            plugins: [RevealHighlight()]
+        });
+    </script>
+</body>
+
+</html>
