@@ -465,21 +465,95 @@ node --max-old-space-size=4096 app.js</code></pre>
                 </table>
             </section>
 
-            <!-- Слайд 20: Заключение -->
+            <!-- Слайд 20: Thread Pool -->
+            <section>
+                <h2>Thread Pool в Node.js</h2>
+                <ul>
+                    <li>Набор заранее созданных системных потоков</li>
+                    <li>Внутри одного процесса Node.js</li>
+                    <li>Используется для блокирующих операций</li>
+                    <li>По умолчанию 4 потока (UV_THREADPOOL_SIZE)</li>
+                    <li>Скрыт внутри libuv</li>
+                </ul>
+                <pre><code class="javascript">// Пример использования блокирующих операций
+const crypto = require('crypto');
+
+// Эти операции используют thread pool
+crypto.pbkdf2('password', 'salt', 100000, 64, 'sha512', (err, key) => {
+  console.log(key.toString('hex'));
+});</code></pre>
+            </section>
+
+            <!-- Слайд 21: Блокирующие операции -->
+            <section>
+                <h2>Блокирующие операции</h2>
+                <p>Операции, которые не могут быть выполнены асинхронно:</p>
+                <ul>
+                    <li>Хэширование (bcrypt, PBKDF2, crypto)</li>
+                    <li>Сжатие данных (zlib)</li>
+                    <li>Часть файловых операций (fs)</li>
+                    <li>Некоторые DNS-запросы</li>
+                    <li>Работа с большими объемами данных</li>
+                </ul>
+                <p style="font-size: 0.7em; margin-top: 1em;">Эти операции передаются в thread pool для выполнения</p>
+            </section>
+
+            <!-- Слайд 22: Обработка потоков -->
+            <section>
+                <h2>Обработка через Thread Pool</h2>
+                <ol>
+                    <li>JavaScript инициирует блокирующую операцию</li>
+                    <li>Libuv передает задачу в thread pool</li>
+                    <li>Один из потоков выполняет операцию</li>
+                    <li>Результат возвращается в event loop</li>
+                    <li>Callback/Promise/async-await обрабатывает результат</li>
+                </ol>
+                <pre><code class="plaintext">JavaScript → Libuv → Thread Pool → OS
+     ↓         ↓          ↓        ↓
+Event Loop ← Result ← Thread ← System Calls</code></pre>
+            </section>
+
+            <!-- Слайд 23: Thread Pool vs Worker Threads -->
+            <section>
+                <h2>Thread Pool vs Worker Threads</h2>
+                <div class="two-columns">
+                    <div>
+                        <h3>Thread Pool</h3>
+                        <ul>
+                            <li>Скрытый внутри libuv</li>
+                            <li>Используется инфраструктурой</li>
+                            <li>Для блокирующих операций</li>
+                            <li>По умолчанию 4 потока</li>
+                            <li>Не требует явного создания</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3>Worker Threads</h3>
+                        <ul>
+                            <li>Явно создаются программистом</li>
+                            <li>Для CPU-интенсивных задач</li>
+                            <li>Собственный JS runtime/V8</li>
+                            <li>Изоляция кода и памяти</li>
+                            <li>Полный контроль над потоками</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Слайд 24: Заключение -->
             <section>
                 <h2>Заключение</h2>
                 <ul>
-                    <li>JavaScript - однопоточный язык</li>
-                    <li>Node.js использует Event Loop для асинхронности</li>
-                    <li>Libuv обеспечивает асинхронность на уровне системы</li>
+                    <li>Node.js использует один основной JavaScript-поток</li>
+                    <li>Libuv реализует event loop и thread pool</li>
+                    <li>Thread pool для блокирующих операций</li>
                     <li>Worker Threads для CPU-интенсивных задач</li>
-                    <li>Различие между браузером и Node.js в подходах к многопоточности</li>
                     <li>Правильное использование ресурсов - ключ к эффективности</li>
                 </ul>
                 <p style="font-size: 0.8em; margin-top: 2em;">Понимание этих концепций помогает создавать более эффективные приложения</p>
             </section>
 
-            <!-- Слайд 21: Вопросы -->
+            <!-- Слайд 25: Вопросы -->
             <section>
                 <h2>Вопросы?</h2>
                 <p>Спасибо за внимание!</p>
